@@ -43,34 +43,30 @@ router.get('/new', async (req, res) => {
 })
 
 // Create Book Route
-router.post('/', upload.single('cover'), async (req, res) => {
-  const fileName = req.file != null ? req.file.filename : null
+router.post('/', upload.single('cover'),async (req, res) => {
   const book = new Book({
     title: req.body.title,
     author: req.body.author,
     publishDate: new Date(req.body.publishDate),
     pageCount: req.body.pageCount,
-    coverImageName: fileName,
-    description: req.body.description
+    description: req.body.description,
+    coverImageName: req.file != null ? req.file.filename : null
   })
+  saveCover(book, req.body.cover)
 
   try {
     const newBook = await book.save()
     // res.redirect(`books/${newBook.id}`)
     res.redirect(`books`)
-  } catch {
-    if (book.coverImageName != null) {
-      removeBookCover(book.coverImageName)
-    }
-    renderNewPage(res, book, true)
+  } catch (err) {
+  console.error(err)
+
+  if (book.coverImageName != null) {
+    removeBookCover(book.coverImageName)
+  }
+  renderNewPage(res, book, true)
   }
 })
-
-function removeBookCover(fileName) {
-  fs.unlink(path.join(uploadPath, fileName), err => {
-    if (err) console.error(err)
-  })
-}
 
 async function renderNewPage(res, book, hasError = false) {
   try {
@@ -84,6 +80,21 @@ async function renderNewPage(res, book, hasError = false) {
   } catch {
     res.redirect('/books')
   }
+}
+
+function saveCover(book, coverEncoded) {
+  if (coverEncoded == null) return
+
+  const cover = JSON.parse(coverEncoded)
+  if (cover != null && imageMimeTypes.includes(cover.type)) {
+    book.coverImageName = cover.data
+  }
+}
+
+function removeBookCover(fileName) {
+  fs.unlink(path.join(uploadPath, fileName), err => {
+    if (err) console.error(err)
+  })
 }
 
 module.exports = router
